@@ -10,11 +10,13 @@ from selenium.webdriver.support import expected_conditions as EC
 import logging
 import re
 import base64 as b64
+from robocorp.tasks import task
+
 
 # Logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-
+@task
 def main(phrases):
     # Initialize the Chrome driver service
     service = Service()
@@ -102,6 +104,7 @@ os.makedirs(outputFolder, exist_ok=True)
 
 # List of phrases to be searched
 phrases = ['economy', 'politics', 'technology']
+
 
 main(phrases)
 
