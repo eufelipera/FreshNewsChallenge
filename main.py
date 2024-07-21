@@ -7,78 +7,89 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.action_chains import ActionChains
 import logging
 import re
 import base64 as b64
 
-def main():
+# Logging configuration
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+
+def main(phrases):
+    # Initialize the Chrome driver service
     service = Service()
 
     options = webdriver.ChromeOptions()
-    # options.add_argument('--headless')
+    # options.add_argument('--headless')  # Uncomment for headless mode
     driver = webdriver.Chrome(service=service, options=options)
 
     logging.info('Starting Browser')
 
-    #website url
+    # Website URL
     url = 'https://apnews.com/'
+    count = 1
+    for phrase in phrases:
+        # Open browser
+        driver.get(url)
+        driver.maximize_window()
 
-    #open browser
-    driver.get(url)
-    driver.maximize_window()
+        # Setting wait conditions
+        wait = WebDriverWait(driver, 10)
+        logging.info(f'Searching for phrase: {phrase}')
 
-    #setting wait conditions
-    wait = WebDriverWait(driver, 5)
+        # Begin search
+        wait.until(EC.element_to_be_clickable((By.CLASS_NAME, 'SearchOverlay-search-button'))).click()
+        wait.until(EC.element_to_be_clickable((By.CLASS_NAME, 'SearchOverlay-search-input'))).send_keys(phrase)
+        driver.find_element(By.CLASS_NAME, 'SearchOverlay-search-input').submit()
 
-    #begin search
-    phrase = 'economy'
-    wait.until(EC.element_to_be_clickable((By.CLASS_NAME,'SearchOverlay-search-button'))).click()
-    wait.until(EC.element_to_be_clickable((By.CLASS_NAME,'SearchOverlay-search-input'))).send_keys(phrase)
-    # driver.find_element(By.CLASS_NAME, 'SearchOverlay-search-input').send_keys(phrase)  #searching phrase
-    driver.find_element(By.CLASS_NAME, 'SearchOverlay-search-input').submit()
+        drop_SortBy = driver.find_element(By.CLASS_NAME, 'Select-input')
+        Select(drop_SortBy).select_by_visible_text('Newest')
+        driver.refresh()
 
+        wait.until(EC.element_to_be_clickable((By.CLASS_NAME, 'SearchResultsModule-results')))
+        time.sleep(5)  # Adjust sleep time if necessary
+        news_elements = driver.find_elements(By.CLASS_NAME, 'SearchResultsModule-results')
+        news_elements = news_elements[0].find_elements(By.CLASS_NAME, 'PageList-items-item')
 
-    drop_SortBy = driver.find_element(By.CLASS_NAME, 'Select-input')
+        for item in news_elements:
+            try:
+                title_element = item.find_element(By.CLASS_NAME, 'PagePromoContentIcons-text').text
+                date_element = item.find_element(By.CLASS_NAME, 'PagePromo-date').text
+                description_element = item.find_element(By.CLASS_NAME, 'PagePromo-description').text
+                Titles.append(title_element)
+                Descriptions.append(description_element)
+                Dates.append(date_element)
+                imgs.append(f'{outputFolder}/image{count}.jpeg')
+                moneys.append(hasMoney(title_element + description_element))
+            except Exception as e:
+                logging.error(f'Error processing item {count}: {e}')
 
-    Select(webelement=drop_SortBy).select_by_visible_text('Newest')
-    # Select(webelement=drop_SortBy).select_by_visible_text('Oldest')
-    driver.refresh()
+            try:
+                img_element = item.find_element(By.CLASS_NAME, 'PagePromo-media').screenshot_as_base64
 
-    wait.until(EC.element_to_be_clickable((By.CLASS_NAME, 'SearchResultsModule-results')))
-    time.sleep(5)
-    news_elements = driver.find_elements(By.CLASS_NAME,'SearchResultsModule-results')
-    news_elements = news_elements[0].find_elements(By.CLASS_NAME,'PageList-items-item')
+            except:
+                img_element = None
 
-    for count, item in enumerate(news_elements):
-        try:
-            Title_element = item.find_element(By.CLASS_NAME,'PagePromoContentIcons-text').text
-            date_element = item.find_element(By.CLASS_NAME,'PagePromo-date').text
-            description_element = item.find_element(By.CLASS_NAME,'PagePromo-description').text
-            img_element = item.find_element(By.CLASS_NAME,'PagePromo-media').screenshot_as_base64
+            # Decoding the image and writing it
+            imageFile = f'{outputFolder}/image{count}.jpeg'
+            b64ToImage(imageFile, img_element)
+            count = count + 1
 
-        except:
-            img_element = None
-
-        Titles.append(Title_element)
-        Descriptions.append(description_element)
-        Dates.append(date_element)
-        imgs.append(f'{outputFolder}/image{count}.jpeg')
-        moneys.append(hasMoney(Title_element + description_element))
-
-        #decoding the image and writing it
-        b64ToImage(f'./{outputFolder}/image{count}.jpeg',img_element)
     logging.info('All news has been captured!')
+    driver.quit()  # Close the browser
 
-def b64ToImage(path,content):
-    if content == None:
+
+def b64ToImage(path, content):
+    if content is None:
         return
     content = b64.b64decode(content)
-    with open(path,'wb') as file:
+    with open(path, 'wb') as file:
         file.write(content)
+
 
 def hasMoney(string):
     return bool(re.search(r'(\$[0-9,]+(\.\d{2})?)|(USD|dollars)', string))
+
 
 Titles = []
 Descriptions = []
@@ -87,22 +98,21 @@ imgs = []
 moneys = []
 
 outputFolder = './Output'
-os.makedirs(outputFolder,exist_ok=True)
+os.makedirs(outputFolder, exist_ok=True)
 
-main()
+# List of phrases to be searched
+phrases = ['economy', 'politics', 'technology']
+
+main(phrases)
 
 data = {
-    'Title':Titles,
-    'Date':Dates,
-    'Description':Descriptions,
+    'Title': Titles,
+    'Date': Dates,
+    'Description': Descriptions,
     'Picture': imgs,
-    'Count phrases':'',
-    'Contain Money?':moneys
-    }
+    'Contains Money?': moneys
+}
 
-
-#create a dataframe
+# Create a dataframe
 df = pd.DataFrame(data)
-
-
 df.to_excel(f'./{outputFolder}/output.xlsx', index=False)
