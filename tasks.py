@@ -18,6 +18,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 @task
 def main(phrases):
+    
     # Initialize the Chrome driver service
     service = Service()
 
