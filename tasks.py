@@ -23,7 +23,7 @@ def main(phrases):
     service = Service()
 
     options = webdriver.ChromeOptions()
-    # options.add_argument('--headless')  # Uncomment for headless mode
+    options.add_argument('--headless')  # Uncomment for headless mode
     driver = webdriver.Chrome(service=service, options=options)
 
     logging.info('Starting Browser')
@@ -74,8 +74,7 @@ def main(phrases):
                 img_element = None
 
             # Decoding the image and writing it
-            imageFile = f'{outputFolder}/image{count}.jpeg'
-            b64ToImage(imageFile, img_element)
+            b64ToImage(f'{outputFolder}/image{count}.jpeg', img_element)
             count = count + 1
 
     logging.info('All news has been captured!')
@@ -88,6 +87,7 @@ def b64ToImage(path, content):
     content = b64.b64decode(content)
     with open(path, 'wb') as file:
         file.write(content)
+        file.close()
 
 
 def hasMoney(string):
@@ -103,8 +103,8 @@ moneys = []
 outputFolder = './Output'
 os.makedirs(outputFolder, exist_ok=True)
 
-# List of phrases to be searched
-phrases = ['economy', 'politics', 'technology']
+# List of phrases to be searched, it could be a file input
+phrases = ['economy', 'politics', 'technology', 'dogs']
 
 
 main(phrases)
@@ -119,4 +119,4 @@ data = {
 
 # Create a dataframe
 df = pd.DataFrame(data)
-df.to_excel(f'./{outputFolder}/output.xlsx', index=False)
+df.to_excel(f'{outputFolder}/output.xlsx', index=False)
